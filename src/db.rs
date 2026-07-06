@@ -8,14 +8,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     is_project BOOLEAN DEFAULT FALSE,
     is_payable BOOLEAN DEFAULT TRUE,
     is_archived BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    notes TEXT DEFAULT '',
+    created_at INTEGER DEFAULT (strftime('%s','now'))
 );
 
 CREATE TABLE IF NOT EXISTS time_periods (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-    begin_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP,
+    begin_time INTEGER NOT NULL,
+    end_time INTEGER,
     duration_seconds INTEGER DEFAULT 0,
     is_payable BOOLEAN DEFAULT TRUE
 );
@@ -29,15 +30,16 @@ pub struct TaskRow {
     pub is_project: bool,
     pub is_payable: bool,
     pub is_archived: bool,
-    pub created_at: String,
+    pub notes: String,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Clone)]
 pub struct TimePeriodRow {
     pub id: i64,
     pub task_id: i64,
-    pub begin_time: String,
-    pub end_time: Option<String>,
+    pub begin_time: i64,
+    pub end_time: Option<i64>,
     pub duration_seconds: i64,
     pub is_payable: bool,
 }
@@ -65,7 +67,7 @@ pub fn create_task(
 
 pub fn get_task(conn: &Connection, id: i64) -> Result<Option<TaskRow>> {
     let mut stmt = conn.prepare(
-        "SELECT id, parent_id, name, is_project, is_payable, is_archived, created_at
+        "SELECT id, parent_id, name, is_project, is_payable, is_archived, notes, created_at
          FROM tasks WHERE id = ?1",
     )?;
 
@@ -77,7 +79,8 @@ pub fn get_task(conn: &Connection, id: i64) -> Result<Option<TaskRow>> {
             is_project: row.get(3)?,
             is_payable: row.get(4)?,
             is_archived: row.get(5)?,
-            created_at: row.get(6)?,
+            notes: row.get::<_, String>(6)?.trim().to_string(),
+            created_at: row.get(7)?,
         })
     })?;
 
@@ -90,7 +93,7 @@ pub fn get_task(conn: &Connection, id: i64) -> Result<Option<TaskRow>> {
 
 pub fn get_all_tasks(conn: &Connection) -> Result<Vec<TaskRow>> {
     let mut stmt = conn.prepare(
-        "SELECT id, parent_id, name, is_project, is_payable, is_archived, created_at
+        "SELECT id, parent_id, name, is_project, is_payable, is_archived, notes, created_at
          FROM tasks ORDER BY created_at ASC",
     )?;
 
@@ -102,7 +105,8 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<TaskRow>> {
             is_project: row.get(3)?,
             is_payable: row.get(4)?,
             is_archived: row.get(5)?,
-            created_at: row.get(6)?,
+            notes: row.get::<_, String>(6)?.trim().to_string(),
+            created_at: row.get(7)?,
         })
     })?;
 
@@ -111,6 +115,30 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<TaskRow>> {
 
 pub fn delete_task(conn: &Connection, id: i64) -> Result<bool> {
     let affected = conn.execute("DELETE FROM tasks WHERE id = ?1", params![id])?;
+    Ok(affected > 0)
+}
+
+pub fn rename_task(conn: &Connection, id: i64, new_name: &str) -> Result<bool> {
+    let affected = conn.execute(
+        "UPDATE tasks SET name = ?1 WHERE id = ?2",
+        params![new_name, id],
+    )?;
+    Ok(affected > 0)
+}
+
+pub fn set_payable(conn: &Connection, id: i64, payable: bool) -> Result<bool> {
+    let affected = conn.execute(
+        "UPDATE tasks SET is_payable = ?1 WHERE id = ?2",
+        params![payable, id],
+    )?;
+    Ok(affected > 0)
+}
+
+pub fn set_task_notes(conn: &Connection, id: i64, notes: &str) -> Result<bool> {
+    let affected = conn.execute(
+        "UPDATE tasks SET notes = ?1 WHERE id = ?2",
+        params![notes, id],
+    )?;
     Ok(affected > 0)
 }
 
@@ -125,8 +153,8 @@ pub fn archive_task(conn: &Connection, id: i64, archived: bool) -> Result<bool> 
 pub fn create_time_period(
     conn: &Connection,
     task_id: i64,
-    begin_time: &str,
-    end_time: Option<&str>,
+    begin_time: i64,
+    end_time: Option<i64>,
     duration_seconds: i64,
     is_payable: bool,
 ) -> Result<i64> {
@@ -231,14 +259,14 @@ mod tests {
     fn delete_task_test() {
         let conn = setup_in_memory_db();
         let id = create_task(&conn, None, "To Delete", true, true).unwrap();
-        assert!(super::delete_task(&conn, id).unwrap());
+        assert!(delete_task(&conn, id).unwrap());
         assert!(get_task(&conn, id).unwrap().is_none());
     }
 
     #[test]
     fn delete_nonexistent_task_returns_false() {
         let conn = setup_in_memory_db();
-        assert!(!super::delete_task(&conn, 999).unwrap());
+        assert!(!delete_task(&conn, 999).unwrap());
     }
 
     #[test]
@@ -257,45 +285,22 @@ mod tests {
     fn create_and_retrieve_time_period() {
         let conn = setup_in_memory_db();
         let task_id = create_task(&conn, None, "Task", false, true).unwrap();
-        let tp_id = create_time_period(
-            &conn,
-            task_id,
-            "2026-07-06 09:00:00",
-            Some("2026-07-06 10:00:00"),
-            3600,
-            true,
-        )
-        .unwrap();
+        let tp_id = create_time_period(&conn, task_id, 1000, Some(2000), 1000, true).unwrap();
         let periods = get_time_periods_for_task(&conn, task_id).unwrap();
         assert_eq!(periods.len(), 1);
         assert_eq!(periods[0].id, tp_id);
-        assert_eq!(periods[0].duration_seconds, 3600);
+        assert_eq!(periods[0].duration_seconds, 1000);
+        assert_eq!(periods[0].begin_time, 1000);
     }
 
     #[test]
     fn total_duration_for_task() {
         let conn = setup_in_memory_db();
         let task_id = create_task(&conn, None, "Task", false, true).unwrap();
-        create_time_period(
-            &conn,
-            task_id,
-            "2026-07-06 09:00:00",
-            Some("2026-07-06 11:00:00"),
-            7200,
-            true,
-        )
-        .unwrap();
-        create_time_period(
-            &conn,
-            task_id,
-            "2026-07-06 14:00:00",
-            Some("2026-07-06 15:30:00"),
-            5400,
-            true,
-        )
-        .unwrap();
+        create_time_period(&conn, task_id, 1000, Some(2000), 1000, true).unwrap();
+        create_time_period(&conn, task_id, 2000, Some(3000), 1000, true).unwrap();
         let total = get_total_duration_for_task(&conn, task_id).unwrap();
-        assert_eq!(total, 7200 + 5400);
+        assert_eq!(total, 2000);
     }
 
     #[test]
@@ -304,5 +309,20 @@ mod tests {
         let id = create_task(&conn, None, "Root", true, true).unwrap();
         let task = get_task(&conn, id).unwrap().unwrap();
         assert!(task.parent_id.is_none());
+    }
+
+    #[test]
+    fn set_and_get_task_notes() {
+        let conn = setup_in_memory_db();
+        let id = create_task(&conn, None, "Notes Test", false, true).unwrap();
+        let task = get_task(&conn, id).unwrap().unwrap();
+        assert_eq!(task.notes, "");
+        set_task_notes(&conn, id, "Hello, world!").unwrap();
+        let task = get_task(&conn, id).unwrap().unwrap();
+        assert_eq!(task.notes, "Hello, world!");
+        // Update again
+        set_task_notes(&conn, id, "").unwrap();
+        let task = get_task(&conn, id).unwrap().unwrap();
+        assert_eq!(task.notes, "");
     }
 }

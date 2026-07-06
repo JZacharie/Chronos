@@ -50,18 +50,10 @@ fn database_complete_workflow() {
     let task_id =
         db::create_task(&conn, Some(project_id), "Integration Task", false, true).unwrap();
 
-    db::create_time_period(
-        &conn,
-        task_id,
-        "2026-07-06 09:00:00",
-        Some("2026-07-06 10:30:00"),
-        5400,
-        true,
-    )
-    .unwrap();
+    db::create_time_period(&conn, task_id, 1000, Some(1500), 500, true).unwrap();
 
     let total = db::get_total_duration_for_task(&conn, task_id).unwrap();
-    assert_eq!(total, 5400);
+    assert_eq!(total, 500);
 
     let tasks = db::get_all_tasks(&conn).unwrap();
     assert_eq!(tasks.len(), 2);

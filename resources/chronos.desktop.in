@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Chronos
+Comment=Minimalist work-time tracker
+Comment[fr]=Traqueur de temps de travail minimaliste
+Exec=@@EXEC@@
+Icon=chronos
+Categories=Office;Utility;
+Terminal=false
+StartupNotify=true
+X-GNOME-Autostart-enabled=true

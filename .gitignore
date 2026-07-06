@@ -1,3 +1,24 @@
-/target
-**/*.rs.bk
-Cargo.lock
+# Rust build artifacts
+target/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Chronos database & backups (kept locally)
+chronos.db
+chronos.db-wal
+chronos.db-shm
+# Note: backups are intentionally stored alongside the database,
+# they should be committed only for distribution

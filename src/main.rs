@@ -1,24 +1,49 @@
-use chronos::tracker::{TimeTracker, TrackerState};
+use std::path::PathBuf;
 
-fn main() {
-    println!("Initializing Chronos...");
+use anyhow::Result;
+use directories::ProjectDirs;
+use tracing_subscriber::EnvFilter;
 
-    let mut tracker = TimeTracker::new();
-    println!("Tracker state: {:?}", tracker.state());
+use chronos::app::AppState;
+use chronos::tray;
+use chronos::ui::ChronosApp;
 
-    match tracker.start(1) {
-        Ok(()) => println!("Tracking started for task 1"),
-        Err(e) => eprintln!("Error: {e}"),
+fn db_path() -> Result<PathBuf> {
+    let proj = ProjectDirs::from("", "", "Chronos")
+        .ok_or_else(|| anyhow::anyhow!("Cannot determine project directories"))?;
+    let dir = proj.data_dir();
+    std::fs::create_dir_all(dir)?;
+    Ok(dir.join("chronos.db"))
+}
+
+fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
+
+    tracing::info!("Initializing Chronos...");
+
+    let path = db_path()?;
+    tracing::info!("Database path: {}", path.display());
+
+    let state = AppState::new(path)?;
+
+    let tray_ctx = tray::setup_tray();
+
+    let app = ChronosApp::new(state, tray_ctx);
+
+    let options = eframe::NativeOptions {
+        viewport: eframe::egui::ViewportBuilder::default()
+            .with_inner_size([800.0, 600.0])
+            .with_title("Chronos — Time Tracker"),
+        ..Default::default()
+    };
+
+    if let Err(e) = eframe::run_native("Chronos", options, Box::new(|_cc| Ok(Box::new(app)))) {
+        tracing::error!("Application error: {e}");
     }
 
-    match tracker.stop() {
-        Ok(entry) => println!(
-            "Stopped task {:?} — duration: {:?}",
-            entry.task_id, entry.duration
-        ),
-        Err(e) => eprintln!("Error: {e}"),
-    }
-
-    assert_eq!(tracker.state(), TrackerState::Idle);
-    println!("Chronos ready.");
+    Ok(())
 }
