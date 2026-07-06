@@ -72,3 +72,11 @@ graph TD
     * **Chronophage Tracking:** Automatically identify and rank the most time-consuming projects.
     * **[Optional] Unallocated Time Redistribution:** Provide a feature to automatically redistribute unallocated (untracked/idle) time proportionally across all active projects based on their active tracking ratios for the day or week.
 
+* **Issue #15: Task Switch Commit Messages & LLM STT Integration (Future Dev)**
+  * **Description:** Add support for Git-style log messages and voice note transcriptions when switching/stopping tasks:
+    * **Task Commit Messages:** User prompt/input to write a brief explanation of what was achieved during the tracked period (stored alongside `time_periods` in the database).
+    * **Audio Voice Recording:** In-app audio recorder module to capture voice notes via the microphone.
+    * **LLM STT Integration:** Send audio files to a Speech-To-Text API (e.g., Whisper API) for conversion to commit message text.
+    * **Configurable LLM Provider:** App settings panel to define LLM provider endpoints (e.g. OpenAI, custom proxy), API key storage, and model choices.
+
+
