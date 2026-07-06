@@ -1,5 +1,5 @@
-use rusqlite::{Connection, Result, params};
 use crate::util;
+use rusqlite::{Connection, Result, params};
 
 pub fn now_ts() -> i64 {
     std::time::SystemTime::now()
@@ -94,9 +94,9 @@ pub fn get_all_periods_in_range(
     conn: &Connection,
     start_ts: i64,
     end_ts: i64,
-) -> Result<Vec<(i64, i64, i64, i64, bool)>> {
+) -> Result<Vec<(i64, i64, i64, i64, i64, bool)>> {
     let mut stmt = conn.prepare(
-        "SELECT tp.task_id, tp.begin_time, tp.end_time, tp.duration_seconds, tp.is_payable
+        "SELECT tp.id, tp.task_id, tp.begin_time, tp.end_time, tp.duration_seconds, tp.is_payable
          FROM time_periods tp
          WHERE tp.begin_time >= ?1 AND tp.begin_time < ?2
          ORDER BY tp.begin_time DESC
@@ -106,9 +106,10 @@ pub fn get_all_periods_in_range(
         Ok((
             row.get::<_, i64>(0)?,
             row.get::<_, i64>(1)?,
-            row.get::<_, Option<i64>>(2)?.unwrap_or(0),
-            row.get::<_, i64>(3)?,
-            row.get::<_, bool>(4)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+            row.get::<_, i64>(4)?,
+            row.get::<_, bool>(5)?,
         ))
     })?;
     rows.collect()
@@ -117,9 +118,9 @@ pub fn get_all_periods_in_range(
 pub fn get_all_periods_ordered(
     conn: &Connection,
     limit: usize,
-) -> Result<Vec<(i64, i64, i64, i64, bool)>> {
+) -> Result<Vec<(i64, i64, i64, i64, i64, bool)>> {
     let mut stmt = conn.prepare(
-        "SELECT tp.task_id, tp.begin_time, tp.end_time, tp.duration_seconds, tp.is_payable
+        "SELECT tp.id, tp.task_id, tp.begin_time, tp.end_time, tp.duration_seconds, tp.is_payable
          FROM time_periods tp
          ORDER BY tp.begin_time DESC
          LIMIT ?1",
@@ -128,9 +129,10 @@ pub fn get_all_periods_ordered(
         Ok((
             row.get::<_, i64>(0)?,
             row.get::<_, i64>(1)?,
-            row.get::<_, Option<i64>>(2)?.unwrap_or(0),
-            row.get::<_, i64>(3)?,
-            row.get::<_, bool>(4)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+            row.get::<_, i64>(4)?,
+            row.get::<_, bool>(5)?,
         ))
     })?;
     rows.collect()

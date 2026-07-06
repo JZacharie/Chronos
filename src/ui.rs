@@ -158,9 +158,11 @@ impl ChronosApp {
                     && (q.is_empty()
                         || matches(t)
                         || tasks.iter().any(|c| {
-                            c.parent_id == Some(t.id) && (matches(c) || tasks.iter().any(|gc| {
-                                gc.parent_id == Some(c.id) && matches(gc)
-                            }))
+                            c.parent_id == Some(t.id)
+                                && (matches(c)
+                                    || tasks
+                                        .iter()
+                                        .any(|gc| gc.parent_id == Some(c.id) && matches(gc)))
                         }))
             })
             .cloned()
@@ -227,7 +229,12 @@ impl ChronosApp {
                 response.highlight();
             }
 
-            if !is_active && ui.small_button("\u{25B6}").on_hover_text("Start tracking").clicked() {
+            if !is_active
+                && ui
+                    .small_button("\u{25B6}")
+                    .on_hover_text("Start tracking")
+                    .clicked()
+            {
                 let name = task.name.clone();
                 let _ = self.state.start_tracking(task.id, &name);
             }
@@ -245,25 +252,42 @@ impl ChronosApp {
                 }
             } else {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.small_button("\u{2795}").on_hover_text("Add child task").clicked() {
+                    if ui
+                        .small_button("\u{2795}")
+                        .on_hover_text("Add child task")
+                        .clicked()
+                    {
                         if let Ok(db) = self.state.db.lock() {
-                            let child_id = db::create_task(&db, Some(task.id), "new task", false, true);
+                            let child_id =
+                                db::create_task(&db, Some(task.id), "new task", false, true);
                             if let Ok(id) = child_id {
                                 self.rename_buf = String::new();
                                 self.renaming_task_id = Some(id);
                             }
                         }
                     }
-                    if ui.small_button("\u{1F589}").on_hover_text("Rename").clicked() {
+                    if ui
+                        .small_button("\u{1F589}")
+                        .on_hover_text("Rename")
+                        .clicked()
+                    {
                         self.rename_buf = task.name.clone();
                         self.renaming_task_id = Some(task.id);
                     }
-                    if ui.small_button("\u{1F5D1}").on_hover_text("Delete").clicked() {
+                    if ui
+                        .small_button("\u{1F5D1}")
+                        .on_hover_text("Delete")
+                        .clicked()
+                    {
                         if let Ok(db) = self.state.db.lock() {
                             let _ = db::delete_task(&db, task.id);
                         }
                     }
-                    if ui.small_button("\u{1F4E4}").on_hover_text("Archive / Unarchive").clicked() {
+                    if ui
+                        .small_button("\u{1F4E4}")
+                        .on_hover_text("Archive / Unarchive")
+                        .clicked()
+                    {
                         if let Ok(db) = self.state.db.lock() {
                             let _ = db::archive_task(&db, task.id, !task.is_archived);
                         }
@@ -541,13 +565,22 @@ impl eframe::App for ChronosApp {
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.horizontal(|ui| {
-                if ui.selectable_label(self.active_tab == Tab::Tasks, "Tasks").clicked() {
+                if ui
+                    .selectable_label(self.active_tab == Tab::Tasks, "Tasks")
+                    .clicked()
+                {
                     self.active_tab = Tab::Tasks;
                 }
-                if ui.selectable_label(self.active_tab == Tab::Journal, "Journal").clicked() {
+                if ui
+                    .selectable_label(self.active_tab == Tab::Journal, "Journal")
+                    .clicked()
+                {
                     self.active_tab = Tab::Journal;
                 }
-                if ui.selectable_label(self.active_tab == Tab::Report, "Report").clicked() {
+                if ui
+                    .selectable_label(self.active_tab == Tab::Report, "Report")
+                    .clicked()
+                {
                     self.active_tab = Tab::Report;
                 }
             });
@@ -560,9 +593,18 @@ impl eframe::App for ChronosApp {
                         if let Ok(db) = self.state.db.lock() {
                             if let Ok(Some(t)) = db::get_task(&db, tid) {
                                 ui.label(format!("Name: {}", t.name));
-                                ui.label(format!("Project: {}", if t.is_project { "Yes" } else { "No" }));
-                                ui.label(format!("Payable: {}", if t.is_payable { "Yes" } else { "No" }));
-                                ui.label(format!("Archived: {}", if t.is_archived { "Yes" } else { "No" }));
+                                ui.label(format!(
+                                    "Project: {}",
+                                    if t.is_project { "Yes" } else { "No" }
+                                ));
+                                ui.label(format!(
+                                    "Payable: {}",
+                                    if t.is_payable { "Yes" } else { "No" }
+                                ));
+                                ui.label(format!(
+                                    "Archived: {}",
+                                    if t.is_archived { "Yes" } else { "No" }
+                                ));
                                 ui.separator();
                                 ui.label("Notes:");
                                 let mut notes = t.notes.clone();
@@ -591,7 +633,8 @@ impl eframe::App for ChronosApp {
                     if let Ok(db) = self.state.db.lock() {
                         let periods = if self.filter_active {
                             let from_ts = parse_date_filter(&self.filter_date_from, 0);
-                            let to_ts = parse_date_filter(&self.filter_date_to, stats::now_ts() + 86400);
+                            let to_ts =
+                                parse_date_filter(&self.filter_date_to, stats::now_ts() + 86400);
                             stats::get_all_periods_in_range(&db, from_ts, to_ts).unwrap_or_default()
                         } else {
                             stats::get_all_periods_ordered(&db, 100).unwrap_or_default()
@@ -614,26 +657,38 @@ impl eframe::App for ChronosApp {
                                         ui.strong("Billable");
                                         ui.end_row();
 
-                                        for (task_id, begin, end, dur, paid) in &periods {
+                                        for (pid, task_id, begin, end, dur, paid) in &periods {
                                             let task_name = self
                                                 .state
                                                 .db
                                                 .lock()
                                                 .ok()
-                                                .and_then(|db| db::get_task(&db, *task_id).ok().flatten())
+                                                .and_then(|db| {
+                                                    db::get_task(&db, *task_id).ok().flatten()
+                                                })
                                                 .map(|t| t.name)
                                                 .unwrap_or_else(|| format!("#{task_id}"));
 
                                             let start_str = util::ts_to_string(*begin);
                                             let end_str = util::ts_to_string(*end);
                                             let dur_str = app::format_duration(*dur as u64);
-                                            let paid_str = if *paid { "\u{2705}" } else { "\u{274C}" };
+                                            let paid_str =
+                                                if *paid { "\u{2705}" } else { "\u{274C}" };
 
                                             ui.label(task_name);
                                             ui.label(start_str);
                                             ui.label(end_str);
                                             ui.label(dur_str);
                                             ui.label(paid_str);
+                                            if ui
+                                                .small_button("\u{1F5D1}")
+                                                .on_hover_text("Delete entry")
+                                                .clicked()
+                                            {
+                                                if let Ok(db) = self.state.db.lock() {
+                                                    let _ = db::delete_time_period(&db, *pid);
+                                                }
+                                            }
                                             ui.end_row();
                                         }
                                     });
@@ -659,13 +714,20 @@ impl eframe::App for ChronosApp {
                                 ui.label("No time recorded in this period.");
                             } else {
                                 let total_all: i64 = report.iter().map(|r| r.total_secs).sum();
-                                let billable_all: i64 = report.iter().map(|r| r.billable_secs).sum();
+                                let billable_all: i64 =
+                                    report.iter().map(|r| r.billable_secs).sum();
                                 ui.horizontal(|ui| {
-                                    ui.label(format!("Total: {}", app::format_duration(total_all as u64)));
+                                    ui.label(format!(
+                                        "Total: {}",
+                                        app::format_duration(total_all as u64)
+                                    ));
                                     ui.separator();
                                     ui.colored_label(
                                         egui::Color32::GOLD,
-                                        format!("Billable: {}", app::format_duration(billable_all as u64)),
+                                        format!(
+                                            "Billable: {}",
+                                            app::format_duration(billable_all as u64)
+                                        ),
                                     );
                                     ui.separator();
                                     let pct = if total_all > 0 {
@@ -689,13 +751,19 @@ impl eframe::App for ChronosApp {
 
                                             for item in &report {
                                                 let pct = if item.total_secs > 0 {
-                                                    (item.billable_secs as f64 / item.total_secs as f64) * 100.0
+                                                    (item.billable_secs as f64
+                                                        / item.total_secs as f64)
+                                                        * 100.0
                                                 } else {
                                                     0.0
                                                 };
                                                 ui.label(&item.task_name);
-                                                ui.label(app::format_duration(item.total_secs as u64));
-                                                ui.label(app::format_duration(item.billable_secs as u64));
+                                                ui.label(app::format_duration(
+                                                    item.total_secs as u64,
+                                                ));
+                                                ui.label(app::format_duration(
+                                                    item.billable_secs as u64,
+                                                ));
                                                 ui.label(format!("{:.0}%", pct));
                                                 ui.end_row();
                                             }
@@ -769,5 +837,3 @@ fn parse_date_filter(s: &str, default: i64) -> i64 {
     days += (d as i64).saturating_sub(1);
     days * 86400
 }
-
-

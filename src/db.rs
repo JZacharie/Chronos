@@ -186,6 +186,11 @@ pub fn get_time_periods_for_task(conn: &Connection, task_id: i64) -> Result<Vec<
     rows.collect()
 }
 
+pub fn delete_time_period(conn: &Connection, id: i64) -> Result<bool> {
+    let affected = conn.execute("DELETE FROM time_periods WHERE id = ?1", params![id])?;
+    Ok(affected > 0)
+}
+
 pub fn get_total_duration_for_task(conn: &Connection, task_id: i64) -> Result<i64> {
     conn.query_row(
         "SELECT COALESCE(SUM(duration_seconds), 0) FROM time_periods WHERE task_id = ?1",
@@ -309,6 +314,16 @@ mod tests {
         let id = create_task(&conn, None, "Root", true, true).unwrap();
         let task = get_task(&conn, id).unwrap().unwrap();
         assert!(task.parent_id.is_none());
+    }
+
+    #[test]
+    fn delete_time_period_removes_row() {
+        let conn = setup_in_memory_db();
+        let task_id = create_task(&conn, None, "Task", false, true).unwrap();
+        let tp_id = create_time_period(&conn, task_id, 1000, Some(2000), 1000, true).unwrap();
+        assert!(delete_time_period(&conn, tp_id).unwrap());
+        let periods = get_time_periods_for_task(&conn, task_id).unwrap();
+        assert_eq!(periods.len(), 0);
     }
 
     #[test]

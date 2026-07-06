@@ -18,7 +18,7 @@ pub fn export_csv(path: &str, conn: &rusqlite::Connection) -> Result<(), String>
     let periods =
         stats::get_all_periods_ordered(conn, 10000).map_err(|e| format!("DB error: {e}"))?;
 
-    for (task_id, begin, end, dur, paid) in &periods {
+    for (_pid, task_id, begin, end, dur, paid) in &periods {
         let task_name = db::get_task(conn, *task_id)
             .ok()
             .flatten()
