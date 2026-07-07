@@ -19,11 +19,17 @@ function Check-Command {
     )
     Write-Host "${Yellow}=== [$Name] ===${NC}"
     
+    # Reset LASTEXITCODE to ensure we don't carry over a previous status
+    $global:LASTEXITCODE = 0
+    
     # Run the script block
     & $Script
+    $success = $?
+    if ($LASTEXITCODE -ne 0) {
+        $success = $false
+    }
     
-    # In PowerShell, $LASTEXITCODE holds the exit code of external commands
-    if ($LASTEXITCODE -eq 0) {
+    if ($success) {
         Write-Host "${Green}OK: $Name passed${NC}`n"
         $global:Pass++
     } else {

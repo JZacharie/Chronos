@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::sync::mpsc;
 use std::sync::Mutex;
+use std::sync::mpsc;
 
 use anyhow::Result;
 
@@ -171,8 +171,7 @@ impl AppState {
                 return Some(task.id);
             }
         }
-        db::create_task(&db, Some(parent_id), "temps lock", false, false)
-            .ok()
+        db::create_task(&db, Some(parent_id), "temps lock", false, false).ok()
     }
 
     fn handle_lock(&mut self) {

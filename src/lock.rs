@@ -1,8 +1,12 @@
 use std::sync::mpsc;
+#[cfg(target_os = "linux")]
 use std::thread;
+#[cfg(target_os = "linux")]
 use std::time::Duration;
+#[cfg(target_os = "linux")]
 use zbus::zvariant::Value;
 
+#[cfg(target_os = "linux")]
 const POLL_INTERVAL_SECS: u64 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,6 +15,7 @@ pub enum LockEvent {
     Unlocked,
 }
 
+#[cfg(target_os = "linux")]
 pub fn spawn_lock_listener(tx: mpsc::Sender<LockEvent>) {
     thread::spawn(move || {
         let conn = match zbus::blocking::Connection::system() {
@@ -46,6 +51,12 @@ pub fn spawn_lock_listener(tx: mpsc::Sender<LockEvent>) {
     });
 }
 
+#[cfg(not(target_os = "linux"))]
+pub fn spawn_lock_listener(_tx: mpsc::Sender<LockEvent>) {
+    // Session lock tracking is currently only supported on Linux via D-Bus
+}
+
+#[cfg(target_os = "linux")]
 fn get_session_path(
     conn: &zbus::blocking::Connection,
     pid: u32,
@@ -63,6 +74,7 @@ fn get_session_path(
     body.deserialize::<zbus::zvariant::OwnedObjectPath>().ok()
 }
 
+#[cfg(target_os = "linux")]
 fn check_locked(
     conn: &zbus::blocking::Connection,
     session_path: &zbus::zvariant::OwnedObjectPath,

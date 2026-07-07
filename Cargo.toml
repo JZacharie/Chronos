@@ -9,12 +9,14 @@ rust-version = "1.92"
 eframe = { version = "0.34", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
 tray-icon = "0.24"
 image = "0.25"
-zbus = { version = "5", default-features = false, features = ["blocking-api"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 directories = "6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", default-features = false, features = ["blocking-api"] }
 
 [target.'cfg(any(windows, target_os = "macos", target_os = "linux"))'.dependencies]
 notify-rust = "4"

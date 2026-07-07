@@ -796,9 +796,7 @@ impl eframe::App for ChronosApp {
                 .collapsible(false)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ui.ctx(), |ui| {
-                    ui.label(format!(
-                        "Delete \"{task_name}\" and all its time entries?"
-                    ));
+                    ui.label(format!("Delete \"{task_name}\" and all its time entries?"));
                     ui.label("This action cannot be undone.");
                     ui.horizontal(|ui| {
                         if ui.button("Cancel").clicked() {
