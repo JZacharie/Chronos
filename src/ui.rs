@@ -130,6 +130,30 @@ impl ChronosApp {
 
     fn update_menu_states(&self) {
         let state = self.state.tracker_state();
+
+        let status_text = match state {
+            TrackerState::Idle => "Status: Idle".to_string(),
+            TrackerState::Running => {
+                let secs = self.state.elapsed_seconds();
+                let name = self
+                    .state
+                    .current_task_name
+                    .as_deref()
+                    .unwrap_or("Unknown Task");
+                format!("Tracking: {} ({})", name, app::format_duration(secs))
+            }
+            TrackerState::Paused => {
+                let secs = self.state.elapsed_seconds();
+                let name = self
+                    .state
+                    .current_task_name
+                    .as_deref()
+                    .unwrap_or("Unknown Task");
+                format!("Paused: {} ({})", name, app::format_duration(secs))
+            }
+        };
+        self.tray_ctx.items.status.set_text(status_text);
+
         self.tray_ctx
             .items
             .start

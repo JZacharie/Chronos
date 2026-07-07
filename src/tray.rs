@@ -7,6 +7,7 @@ pub const MENU_ID_PAUSE: &str = "pause";
 pub const MENU_ID_RESUME: &str = "resume";
 pub const MENU_ID_TOGGLE: &str = "toggle";
 pub const MENU_ID_LOGS: &str = "logs";
+pub const MENU_ID_STATUS: &str = "status";
 pub const MENU_ID_QUIT: &str = "quit";
 
 pub struct TrayContext {
@@ -17,6 +18,7 @@ pub struct TrayContext {
 }
 
 pub struct TrayMenuItems {
+    pub status: MenuItem,
     pub start: MenuItem,
     pub stop: MenuItem,
     pub pause: MenuItem,
@@ -35,6 +37,7 @@ pub fn create_icon() -> Icon {
 }
 
 pub fn setup_tray() -> TrayContext {
+    let status = MenuItem::with_id(MENU_ID_STATUS, "Status: Idle", false, None);
     let start = MenuItem::with_id(MENU_ID_START, "Start Tracking", true, None);
     let stop = MenuItem::with_id(MENU_ID_STOP, "Stop Tracking", true, None);
     let pause = MenuItem::with_id(MENU_ID_PAUSE, "Pause", true, None);
@@ -45,6 +48,8 @@ pub fn setup_tray() -> TrayContext {
 
     let menu = Menu::new();
     menu.append_items(&[
+        &status,
+        &PredefinedMenuItem::separator(),
         &start,
         &stop,
         &pause,
@@ -74,6 +79,7 @@ pub fn setup_tray() -> TrayContext {
         menu_rx: menu_rx.clone(),
         _tray_rx: tray_rx.clone(),
         items: TrayMenuItems {
+            status,
             start,
             stop,
             pause,
