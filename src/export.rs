@@ -60,7 +60,9 @@ mod tests {
         db::create_time_period(&conn, task_id, 1000, Some(2000), 1000, true).unwrap();
         db::create_time_period(&conn, task_id, 2000, Some(2500), 500, false).unwrap();
 
-        let path = "/tmp/test_chronos_export.csv";
+        let temp_dir = std::env::temp_dir();
+        let path_buf = temp_dir.join("test_chronos_export.csv");
+        let path = path_buf.to_str().unwrap();
         export_csv(path, &conn).unwrap();
 
         let content = std::fs::read_to_string(path).unwrap();
