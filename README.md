@@ -1,5 +1,9 @@
 # Chronos
 
+<p align="center">
+  <img src="wiki/image.png" alt="Chronos Logo" width="128" />
+</p>
+
 > A minimalist, intelligent work-time tracker for freelancers and individual professionals.
 > Un traqueur de temps de travail minimaliste et intelligent pour freelances et professionnels indépendants.
 
@@ -30,6 +34,10 @@
 | Statistics tooltip dashboard (Today, Yesterday, Week, Month) | Infobulle statistiques (Aujourd'hui, Hier, Semaine, Mois) |
 | CSV & report exporter for billing | Export CSV et rapports pour facturation |
 | Daily automatic local backups | Sauvegarde automatique quotidienne locale |
+| In-memory log buffer & GUI viewer | Capture des logs en mémoire et visionneuse GUI |
+| Redraw wakeup for hidden windows | Réveil de l'interface winit depuis la barre des tâches |
+| Windows Subsystem compilation (hidden console) | Masquage de la console système sous Windows |
+| Dynamic tray menu status label | Statut de suivi en temps réel dans la barre des tâches |
 
 ### Guiding Principles / Principes directeurs
 
@@ -238,6 +246,13 @@ chronos/
 ├── issues.md                   # English backlog / Backlog (EN)
 └── README.md                   # This file / Ce fichier
 ```
+
+---
+
+## Feature Requests / Demandes de fonctionnalités
+
+**English** | To request a new feature or ask for a development, please create an issue directly in this repository.
+**Français** | Pour toute demande de nouvelle fonctionnalité ou de développement, veuillez créer un ticket (issue) directement dans ce dépôt.
 
 ---
 
