@@ -51,7 +51,10 @@ Check-Command "cargo clippy" { cargo clippy --workspace --all-targets -- -D warn
 Check-Command "cargo test" { cargo test --workspace --all-features }
 
 # ── Build ─────────────────────────────────────────────────
-Check-Command "cargo build --release" { cargo build --release }
+Check-Command "cargo build --release" {
+    Stop-Process -Name "chronos" -ErrorAction SilentlyContinue
+    cargo build --release
+}
 
 # ── Summary ───────────────────────────────────────────────
 Write-Host "${Yellow}======================================${NC}"
