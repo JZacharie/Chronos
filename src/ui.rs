@@ -36,6 +36,7 @@ pub struct ChronosApp {
     pub show_logs: bool,
     needs_visibility_update: bool,
     confirm_delete_task_id: Option<i64>,
+    tray_event_rx: Option<std::sync::mpsc::Receiver<tray_icon::menu::MenuEvent>>,
 }
 
 impl ChronosApp {
@@ -61,51 +62,54 @@ impl ChronosApp {
             show_logs: false,
             needs_visibility_update: false,
             confirm_delete_task_id: None,
+            tray_event_rx: None,
         }
     }
 
     fn process_tray_events(&mut self) {
-        while let Ok(event) = self.tray_ctx.menu_rx.try_recv() {
-            let id = event.id.0.as_str();
-            match id {
-                tray::MENU_ID_START => {
-                    if let Some(tid) = self.selected_task_id.or(self.state.current_task_id) {
-                        let name = self
-                            .state
-                            .db
-                            .lock()
-                            .ok()
-                            .and_then(|db| db::get_task(&db, tid).ok().flatten())
-                            .map(|t| t.name)
-                            .unwrap_or_default();
-                        let _ = self.state.start_tracking(tid, &name);
+        if let Some(rx) = &self.tray_event_rx {
+            while let Ok(event) = rx.try_recv() {
+                let id = event.id.0.as_str();
+                match id {
+                    tray::MENU_ID_START => {
+                        if let Some(tid) = self.selected_task_id.or(self.state.current_task_id) {
+                            let name = self
+                                .state
+                                .db
+                                .lock()
+                                .ok()
+                                .and_then(|db| db::get_task(&db, tid).ok().flatten())
+                                .map(|t| t.name)
+                                .unwrap_or_default();
+                            let _ = self.state.start_tracking(tid, &name);
+                        }
                     }
+                    tray::MENU_ID_STOP => {
+                        let _ = self.state.stop_tracking();
+                    }
+                    tray::MENU_ID_PAUSE => {
+                        let _ = self.state.pause_tracking();
+                    }
+                    tray::MENU_ID_RESUME => {
+                        let _ = self.state.resume_tracking();
+                    }
+                    tray::MENU_ID_TOGGLE => {
+                        self.state.toggle_window();
+                        self.needs_visibility_update = true;
+                    }
+                    tray::MENU_ID_LOGS => {
+                        self.show_logs = true;
+                        self.state.window_visible = true;
+                        self.needs_visibility_update = true;
+                    }
+                    tray::MENU_ID_QUIT => {
+                        std::process::exit(0);
+                    }
+                    _ => {}
                 }
-                tray::MENU_ID_STOP => {
-                    let _ = self.state.stop_tracking();
-                }
-                tray::MENU_ID_PAUSE => {
-                    let _ = self.state.pause_tracking();
-                }
-                tray::MENU_ID_RESUME => {
-                    let _ = self.state.resume_tracking();
-                }
-                tray::MENU_ID_TOGGLE => {
-                    self.state.toggle_window();
-                    self.needs_visibility_update = true;
-                }
-                tray::MENU_ID_LOGS => {
-                    self.show_logs = true;
-                    self.state.window_visible = true;
-                    self.needs_visibility_update = true;
-                }
-                tray::MENU_ID_QUIT => {
-                    std::process::exit(0);
-                }
-                _ => {}
+                self.state.update_status();
+                self.update_tray_tooltip();
             }
-            self.state.update_status();
-            self.update_tray_tooltip();
         }
     }
 
@@ -329,6 +333,19 @@ impl ChronosApp {
 
 impl eframe::App for ChronosApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.tray_event_rx.is_none() {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let ctx_clone = ctx.clone();
+            std::thread::spawn(move || {
+                let receiver = tray_icon::menu::MenuEvent::receiver();
+                while let Ok(event) = receiver.recv() {
+                    let _ = tx.send(event);
+                    ctx_clone.request_repaint();
+                }
+            });
+            self.tray_event_rx = Some(rx);
+        }
+
         if ctx.input(|i| i.viewport().close_requested()) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
