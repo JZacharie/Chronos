@@ -11,12 +11,15 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
 
+permissions:
+  contents: write
+
 jobs:
   precheck:
     name: Pre-check (fmt)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -31,7 +34,7 @@ jobs:
     needs: [precheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install system dependencies
         run: |
@@ -57,3 +60,32 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace --all-features
+
+  release:
+    name: Build & Release Windows Beta
+    needs: [check-and-test]
+    runs-on: windows-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Release
+        run: cargo build --release
+
+      - name: Create Beta Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0-beta.${{ github.run_number }}
+          name: Chronos Beta v0.1.0-beta.${{ github.run_number }}
+          body: |
+            Automatic Beta Release for Chronos (Build #${{ github.run_number }}).
+            
+            ### Download / Téléchargement
+            - **[chronos.exe (Windows)](https://github.com/${{ github.repository }}/releases/download/v0.1.0-beta.${{ github.run_number }}/chronos.exe)**
+          prerelease: true
+          files: target/release/chronos.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
