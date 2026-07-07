@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -5,6 +7,7 @@ use directories::ProjectDirs;
 use tracing_subscriber::EnvFilter;
 
 use chronos::app::AppState;
+use chronos::log_buffer::LogWriter;
 use chronos::tray;
 use chronos::ui::ChronosApp;
 
@@ -18,6 +21,7 @@ fn db_path() -> Result<PathBuf> {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
+        .with_writer(|| LogWriter)
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )

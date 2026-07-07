@@ -7,6 +7,7 @@ pub mod db;
 pub mod export;
 pub mod idle;
 pub mod lock;
+pub mod log_buffer;
 pub mod notify;
 pub mod stats;
 pub mod tracker;

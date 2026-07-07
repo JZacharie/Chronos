@@ -33,6 +33,7 @@ pub struct ChronosApp {
     pub report_from: String,
     pub report_to: String,
     pub show_help: bool,
+    pub show_logs: bool,
     needs_visibility_update: bool,
     confirm_delete_task_id: Option<i64>,
 }
@@ -57,6 +58,7 @@ impl ChronosApp {
             report_from: today.clone(),
             report_to: today.clone(),
             show_help: false,
+            show_logs: false,
             needs_visibility_update: false,
             confirm_delete_task_id: None,
         }
@@ -90,6 +92,11 @@ impl ChronosApp {
                 }
                 tray::MENU_ID_TOGGLE => {
                     self.state.toggle_window();
+                    self.needs_visibility_update = true;
+                }
+                tray::MENU_ID_LOGS => {
+                    self.show_logs = true;
+                    self.state.window_visible = true;
                     self.needs_visibility_update = true;
                 }
                 tray::MENU_ID_QUIT => {
@@ -442,14 +449,15 @@ impl eframe::App for ChronosApp {
                     if ui.button("?").on_hover_text("Keyboard shortcuts").clicked() {
                         self.show_help = !self.show_help;
                     }
+                    if ui
+                        .button("Logs")
+                        .on_hover_text("Show application logs")
+                        .clicked()
+                    {
+                        self.show_logs = !self.show_logs;
+                    }
                     if ui.button("Export CSV").clicked() {
-                        let path = format!(
-                            "/tmp/chronos_export_{}.csv",
-                            std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs()
-                        );
+                        let path = format!("/tmp/chronos_export_{}.csv", stats::now_ts());
                         let result = self
                             .state
                             .db
@@ -832,6 +840,45 @@ impl eframe::App for ChronosApp {
                     if ui.button("Close").clicked() {
                         self.show_help = false;
                     }
+                });
+        }
+
+        if self.show_logs {
+            egui::Window::new("Application Logs")
+                .id("logs_window".into())
+                .default_size([600.0, 400.0])
+                .show(ui.ctx(), |ui| {
+                    ui.vertical(|ui| {
+                        ui.horizontal(|ui| {
+                            if ui.button("Clear").clicked() {
+                                if let Ok(mut logs) = crate::log_buffer::get_logs().lock() {
+                                    logs.clear();
+                                }
+                            }
+                            if ui.button("Close").clicked() {
+                                self.show_logs = false;
+                            }
+                        });
+                        ui.separator();
+
+                        let mut log_text = if let Ok(logs) = crate::log_buffer::get_logs().lock() {
+                            logs.join("")
+                        } else {
+                            "Failed to lock logs".to_string()
+                        };
+
+                        egui::ScrollArea::vertical()
+                            .max_height(350.0)
+                            .stick_to_bottom(true)
+                            .show(ui, |ui| {
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut log_text)
+                                        .font(egui::TextStyle::Monospace)
+                                        .interactive(false)
+                                        .desired_width(f32::INFINITY),
+                                );
+                            });
+                    });
                 });
         }
     }

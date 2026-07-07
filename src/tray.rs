@@ -6,6 +6,7 @@ pub const MENU_ID_STOP: &str = "stop";
 pub const MENU_ID_PAUSE: &str = "pause";
 pub const MENU_ID_RESUME: &str = "resume";
 pub const MENU_ID_TOGGLE: &str = "toggle";
+pub const MENU_ID_LOGS: &str = "logs";
 pub const MENU_ID_QUIT: &str = "quit";
 
 pub struct TrayContext {
@@ -21,6 +22,7 @@ pub struct TrayMenuItems {
     pub pause: MenuItem,
     pub resume: MenuItem,
     pub toggle: MenuItem,
+    pub logs: MenuItem,
     pub quit: MenuItem,
 }
 
@@ -38,6 +40,7 @@ pub fn setup_tray() -> TrayContext {
     let pause = MenuItem::with_id(MENU_ID_PAUSE, "Pause", true, None);
     let resume = MenuItem::with_id(MENU_ID_RESUME, "Resume", true, None);
     let toggle = MenuItem::with_id(MENU_ID_TOGGLE, "Show/Hide Window", true, None);
+    let logs = MenuItem::with_id(MENU_ID_LOGS, "Show Logs", true, None);
     let quit = MenuItem::with_id(MENU_ID_QUIT, "Quit", true, None);
 
     let menu = Menu::new();
@@ -48,6 +51,7 @@ pub fn setup_tray() -> TrayContext {
         &resume,
         &PredefinedMenuItem::separator(),
         &toggle,
+        &logs,
         &PredefinedMenuItem::separator(),
         &quit,
     ])
@@ -75,6 +79,7 @@ pub fn setup_tray() -> TrayContext {
             pause,
             resume,
             toggle,
+            logs,
             quit,
         },
     }
