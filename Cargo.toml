@@ -8,6 +8,7 @@ rust-version = "1.92"
 [dependencies]
 eframe = { version = "0.34", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
 tray-icon = "0.24"
+resvg = "0.47"
 rusqlite = { version = "0.32", features = ["bundled"] }
 anyhow = "1"
 tracing = "0.1"
