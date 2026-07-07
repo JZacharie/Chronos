@@ -19,7 +19,7 @@ jobs:
     name: Pre-check (fmt)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -34,7 +34,7 @@ jobs:
     needs: [precheck]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install system dependencies
         run: |
@@ -67,7 +67,7 @@ jobs:
     runs-on: windows-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -76,7 +76,7 @@ jobs:
         run: cargo build --release
 
       - name: Create Beta Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.1.0-beta.${{ github.run_number }}
           name: Chronos Beta v0.1.0-beta.${{ github.run_number }}
