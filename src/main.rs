@@ -38,10 +38,16 @@ fn main() -> Result<()> {
 
     let app = ChronosApp::new(state, tray_ctx);
 
+    let mut viewport = eframe::egui::ViewportBuilder::default()
+        .with_inner_size([800.0, 600.0])
+        .with_title("Chronos — Time Tracker");
+
+    if let Some(icon) = load_window_icon() {
+        viewport = viewport.with_icon(icon);
+    }
+
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 600.0])
-            .with_title("Chronos — Time Tracker"),
+        viewport,
         ..Default::default()
     };
 
@@ -50,4 +56,15 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn load_window_icon() -> Option<eframe::egui::IconData> {
+    let img_bytes = include_bytes!("../wiki/image.png");
+    let img = image::load_from_memory(img_bytes).ok()?;
+    let rgba = img.to_rgba8().into_raw();
+    Some(eframe::egui::IconData {
+        rgba,
+        width: img.width(),
+        height: img.height(),
+    })
 }
