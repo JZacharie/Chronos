@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::sync::Mutex;
 
 use anyhow::Result;
@@ -6,6 +7,7 @@ use anyhow::Result;
 use crate::backup;
 use crate::db;
 use crate::idle::{IdleDetector, IdleEvent};
+use crate::lock::{self, LockEvent};
 use crate::notify;
 use crate::stats;
 use crate::tracker::{TimeEntry, TimeTracker, TrackerState};
@@ -21,6 +23,9 @@ pub struct AppState {
     pub idle: IdleDetector,
     pub idle_dialog: Option<IdleEvent>,
     last_notify: String,
+    lock_rx: mpsc::Receiver<LockEvent>,
+    original_task_id: Option<i64>,
+    original_task_name: Option<String>,
 }
 
 impl AppState {
@@ -34,6 +39,9 @@ impl AppState {
         let _ = backup::daily_backup(&db_path);
         let _ = backup::prune_backups(&db_path, 30);
 
+        let (lock_tx, lock_rx) = mpsc::channel();
+        lock::spawn_lock_listener(lock_tx);
+
         Ok(Self {
             tracker: TimeTracker::new(),
             db_path,
@@ -45,6 +53,9 @@ impl AppState {
             idle: IdleDetector::new(),
             idle_dialog: None,
             last_notify: String::new(),
+            lock_rx,
+            original_task_id: None,
+            original_task_name: None,
         })
     }
 
@@ -141,6 +152,57 @@ impl AppState {
                 }
             }
         }
+    }
+
+    pub fn check_lock(&mut self) {
+        while let Ok(event) = self.lock_rx.try_recv() {
+            match event {
+                LockEvent::Locked => self.handle_lock(),
+                LockEvent::Unlocked => self.handle_unlock(),
+            }
+        }
+    }
+
+    fn find_or_create_lock_task(&self, parent_id: i64) -> Option<i64> {
+        let db = self.db.lock().ok()?;
+        let tasks = db::get_all_tasks(&db).ok()?;
+        for task in &tasks {
+            if task.parent_id == Some(parent_id) && task.name == "temps lock" {
+                return Some(task.id);
+            }
+        }
+        db::create_task(&db, Some(parent_id), "temps lock", false, false)
+            .ok()
+    }
+
+    fn handle_lock(&mut self) {
+        if self.tracker.state() == TrackerState::Running {
+            self.original_task_id = self.current_task_id;
+            self.original_task_name = self.current_task_name.clone();
+
+            let _ = self.stop_tracking();
+            if let Some(orig_id) = self.original_task_id {
+                if let Some(lock_id) = self.find_or_create_lock_task(orig_id) {
+                    let _ = self.start_tracking(lock_id, "temps lock");
+                    self.last_status = "Session locked \u{2014} tracking lock time".to_string();
+                }
+            }
+        }
+    }
+
+    fn handle_unlock(&mut self) {
+        if self.tracker.state() == TrackerState::Running {
+            let _ = self.stop_tracking();
+        }
+
+        if let Some(orig_id) = self.original_task_id {
+            let orig_name = self.original_task_name.clone().unwrap_or_default();
+            let _ = self.start_tracking(orig_id, &orig_name);
+            self.last_status = "Session unlocked \u{2014} resumed".to_string();
+        }
+
+        self.original_task_id = None;
+        self.original_task_name = None;
     }
 
     pub fn update_status(&mut self) {

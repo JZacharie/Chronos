@@ -33,6 +33,8 @@ pub struct ChronosApp {
     pub report_from: String,
     pub report_to: String,
     pub show_help: bool,
+    needs_visibility_update: bool,
+    confirm_delete_task_id: Option<i64>,
 }
 
 impl ChronosApp {
@@ -55,6 +57,8 @@ impl ChronosApp {
             report_from: today.clone(),
             report_to: today.clone(),
             show_help: false,
+            needs_visibility_update: false,
+            confirm_delete_task_id: None,
         }
     }
 
@@ -86,6 +90,7 @@ impl ChronosApp {
                 }
                 tray::MENU_ID_TOGGLE => {
                     self.state.toggle_window();
+                    self.needs_visibility_update = true;
                 }
                 tray::MENU_ID_QUIT => {
                     std::process::exit(0);
@@ -279,9 +284,8 @@ impl ChronosApp {
                         .on_hover_text("Delete")
                         .clicked()
                     {
-                        if let Ok(db) = self.state.db.lock() {
-                            let _ = db::delete_task(&db, task.id);
-                        }
+                        self.confirm_delete_task_id = Some(task.id);
+                        self.rename_buf = task.name.clone();
                     }
                     if ui
                         .small_button("\u{1F4E4}")
@@ -318,8 +322,21 @@ impl ChronosApp {
 
 impl eframe::App for ChronosApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if ctx.input(|i| i.viewport().close_requested()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.state.window_visible = false;
+            return;
+        }
+
         self.process_tray_events();
         self.update_menu_states();
+        self.state.check_lock();
+
+        if self.needs_visibility_update {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(self.state.window_visible));
+            self.needs_visibility_update = false;
+        }
 
         if ctx.input(|i| i.pointer.any_down() || i.pointer.hover_pos().is_some()) {
             self.state.register_activity();
@@ -329,9 +346,6 @@ impl eframe::App for ChronosApp {
 
         ctx.input_mut(|i| {
             let ctrl = i.modifiers.ctrl;
-            if ctrl && i.key_pressed(egui::Key::Q) {
-                std::process::exit(0);
-            }
             if ctrl && i.key_pressed(egui::Key::Space) && !i.modifiers.shift {
                 match self.state.tracker_state() {
                     TrackerState::Idle | TrackerState::Paused => {
@@ -375,6 +389,7 @@ impl eframe::App for ChronosApp {
             }
             if ctrl && i.key_pressed(egui::Key::H) {
                 self.state.toggle_window();
+                self.needs_visibility_update = true;
             }
             if ctrl && i.key_pressed(egui::Key::P) {
                 match self.state.tracker_state() {
@@ -453,9 +468,6 @@ impl eframe::App for ChronosApp {
                             }
                         }
                         self.state.update_status();
-                    }
-                    if ui.button("Quit").clicked() {
-                        std::process::exit(0);
                     }
                 });
             });
@@ -776,6 +788,32 @@ impl eframe::App for ChronosApp {
             }
         });
 
+        if let Some(task_id) = self.confirm_delete_task_id {
+            let task_name = self.rename_buf.clone();
+            egui::Window::new("Confirm Delete")
+                .id("confirm_delete".into())
+                .resizable(false)
+                .collapsible(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ui.ctx(), |ui| {
+                    ui.label(format!(
+                        "Delete \"{task_name}\" and all its time entries?"
+                    ));
+                    ui.label("This action cannot be undone.");
+                    ui.horizontal(|ui| {
+                        if ui.button("Cancel").clicked() {
+                            self.confirm_delete_task_id = None;
+                        }
+                        if ui.button("\u{1F5D1}  Delete").clicked() {
+                            if let Ok(db) = self.state.db.lock() {
+                                let _ = db::delete_task(&db, task_id);
+                            }
+                            self.confirm_delete_task_id = None;
+                        }
+                    });
+                });
+        }
+
         if self.show_help {
             egui::Window::new("Keyboard Shortcuts")
                 .id("help_window".into())
@@ -787,7 +825,7 @@ impl eframe::App for ChronosApp {
                     ui.label("Ctrl+P      \u{2192} Pause / Resume");
                     ui.label("Ctrl+E      \u{2192} Export CSV");
                     ui.label("Ctrl+H      \u{2192} Hide / Show window");
-                    ui.label("Ctrl+Q      \u{2192} Quit");
+                    ui.label("Quit via system tray menu");
                     ui.label("F1 / ?     \u{2192} Toggle this help");
                     ui.separator();
                     ui.label("Double-click a task \u{2192} Start tracking");

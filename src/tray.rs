@@ -25,41 +25,11 @@ pub struct TrayMenuItems {
 }
 
 pub fn create_icon() -> Icon {
-    let svg_data = include_bytes!("../resources/chronos.svg");
-    let tree = resvg::usvg::Tree::from_data(svg_data, &resvg::usvg::Options::default())
-        .expect("Failed to parse SVG icon");
-
-    let size = 32;
-    let mut pixmap = resvg::tiny_skia::Pixmap::new(size, size)
-        .expect("Failed to create pixmap for tray icon");
-
-    let scale = size as f32 / 64.0;
-    let transform = resvg::tiny_skia::Transform::from_scale(scale, scale);
-    resvg::render(&tree, transform, &mut pixmap.as_mut());
-
-    let premul = pixmap.data();
-    let mut rgba = Vec::with_capacity(premul.len());
-
-    for chunk in premul.chunks_exact(4) {
-        let r = chunk[0];
-        let g = chunk[1];
-        let b = chunk[2];
-        let a = chunk[3];
-        if a == 0 {
-            rgba.extend_from_slice(&[0, 0, 0, 0]);
-        } else if a == 255 {
-            rgba.extend_from_slice(&[r, g, b, a]);
-        } else {
-            rgba.extend_from_slice(&[
-                ((r as u16 * 255) / a as u16) as u8,
-                ((g as u16 * 255) / a as u16) as u8,
-                ((b as u16 * 255) / a as u16) as u8,
-                a,
-            ]);
-        }
-    }
-
-    Icon::from_rgba(rgba, size, size).expect("Failed to create tray icon from SVG")
+    let img_bytes = include_bytes!("../wiki/image.png");
+    let img = image::load_from_memory(img_bytes).expect("Failed to load tray icon PNG");
+    let resized = img.resize_exact(32, 32, image::imageops::FilterType::Lanczos3);
+    let rgba = resized.to_rgba8().into_raw();
+    Icon::from_rgba(rgba, 32, 32).expect("Failed to create tray icon")
 }
 
 pub fn setup_tray() -> TrayContext {
