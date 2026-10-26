@@ -463,7 +463,7 @@ impl eframe::App for ChronosApp {
             ctx.request_repaint_after(std::time::Duration::from_millis(250));
         }
 
-        egui::Panel::top("status_bar").show_inside(ui, |ui| {
+        egui::Panel::top("status_bar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 let title = egui::RichText::new("Chronos")
                     .strong()
@@ -532,7 +532,7 @@ impl eframe::App for ChronosApp {
                 }
                 IdleEvent::ReturnedFromIdle => "Welcome back! Idle time was discarded.".to_string(),
             };
-            egui::Panel::top("idle_dialog").show_inside(ui, |ui| {
+            egui::Panel::top("idle_dialog").show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.colored_label(egui::Color32::YELLOW, "\u{23F0}");
                     ui.label(&msg);
@@ -550,7 +550,7 @@ impl eframe::App for ChronosApp {
             });
         }
 
-        egui::Panel::bottom("stats_bar").show_inside(ui, |ui| {
+        egui::Panel::bottom("stats_bar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 if let Ok(db) = self.state.db.lock() {
                     if let Ok(s) = stats::compute_stats(&db) {
@@ -574,7 +574,7 @@ impl eframe::App for ChronosApp {
         egui::Panel::left("task_panel")
             .resizable(true)
             .default_size(280.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.heading("Tasks");
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -624,7 +624,7 @@ impl eframe::App for ChronosApp {
                 });
             });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.horizontal(|ui| {
                 if ui
                     .selectable_label(self.active_tab == Tab::Tasks, "Tasks")
